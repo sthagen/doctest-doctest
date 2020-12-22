@@ -77,6 +77,20 @@ struct Foo
 
 // as a third option you may provide an overload of toString()
 inline doctest::String toString(const Foo&) { return "Foo{}"; }
+
+struct MyOtherType
+{
+    int data;
+    friend bool operator==(const MyOtherType& l, const MyOtherType& r) { return l.data == r.data; }
+};
+
+// you also can use a template operator<< if your code does not use std::ostream
+template <class OStream>
+OStream& operator<<(OStream& stream, const MyOtherType& in) {
+    stream << "MyOtherType: " << in.data;
+    return stream;
+}
+
 } // namespace Bar
 
 // set an exception translator for MyTypeInherited<int>
@@ -126,6 +140,14 @@ TEST_CASE("all asserts should fail and show how the objects get stringified") {
     lst_2.push_back(666);
 
     CHECK(lst_1 == lst_2);
+
+    {
+        Bar::MyOtherType s1 {42};
+        Bar::MyOtherType s2 {666};
+        INFO("s1=", s1, " s2=", s2);
+        CHECK(s1 == s2);
+        CHECK_MESSAGE(s1 == s2, s1, " is not really ", s2);
+    }
 
     // lets see if this exception gets translated
     throw_if(true, bla1);

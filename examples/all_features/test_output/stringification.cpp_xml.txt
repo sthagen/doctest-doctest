@@ -35,10 +35,35 @@
           [1, 42, 3, ] == [1, 2, 666, ]
         </Expanded>
       </Expression>
+      <Expression success="false" type="CHECK" filename="stringification.cpp" line="0">
+        <Original>
+          s1 == s2
+        </Original>
+        <Expanded>
+          MyOtherType: 42 == MyOtherType: 666
+        </Expanded>
+        <Info>
+          s1=MyOtherType: 42 s2=MyOtherType: 666
+        </Info>
+      </Expression>
+      <Expression success="false" type="CHECK" filename="stringification.cpp" line="0">
+        <Original>
+          s1 == s2
+        </Original>
+        <Expanded>
+          MyOtherType: 42 == MyOtherType: 666
+        </Expanded>
+        <Info>
+          s1=MyOtherType: 42 s2=MyOtherType: 666
+        </Info>
+        <Info>
+          MyOtherType: 42 is not really MyOtherType: 666
+        </Info>
+      </Expression>
       <Exception crash="false">
         MyTypeInherited&lt;int>(5, 4)
       </Exception>
-      <OverallResultsAsserts successes="0" failures="4"/>
+      <OverallResultsAsserts successes="0" failures="6"/>
     </TestCase>
     <TestCase name="a test case that registers an exception translator for int and then throws one" filename="stringification.cpp" line="0">
       <Exception crash="false">
@@ -47,7 +72,7 @@
       <OverallResultsAsserts successes="0" failures="0"/>
     </TestCase>
   </TestSuite>
-  <OverallResultsAsserts successes="0" failures="4"/>
+  <OverallResultsAsserts successes="0" failures="6"/>
   <OverallResultsTestCases successes="0" failures="2"/>
 </doctest>
 Program code.
