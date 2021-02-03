@@ -32,6 +32,7 @@ DOCTEST_CLANG_SUPPRESS_WARNING("-Wmissing-field-initializers")
 DOCTEST_CLANG_SUPPRESS_WARNING("-Wc++98-compat")
 DOCTEST_CLANG_SUPPRESS_WARNING("-Wc++98-compat-pedantic")
 DOCTEST_CLANG_SUPPRESS_WARNING("-Wunused-member-function")
+DOCTEST_CLANG_SUPPRESS_WARNING("-Wnonportable-system-include-path")
 
 DOCTEST_GCC_SUPPRESS_WARNING_PUSH
 DOCTEST_GCC_SUPPRESS_WARNING("-Wunknown-pragmas")
@@ -137,11 +138,7 @@ DOCTEST_MAKE_STD_HEADERS_CLEAN_FROM_WARNINGS_ON_WALL_BEGIN
 #ifdef __AFXDLL
 #include <AfxWin.h>
 #else
-#if defined(__MINGW32__) || defined(__MINGW64__)
 #include <windows.h>
-#else // MINGW
-#include <Windows.h>
-#endif // MINGW
 #endif
 #include <io.h>
 
@@ -175,6 +172,14 @@ DOCTEST_MAKE_STD_HEADERS_CLEAN_FROM_WARNINGS_ON_WALL_END
 
 #ifndef DOCTEST_THREAD_LOCAL
 #define DOCTEST_THREAD_LOCAL thread_local
+#endif
+
+#ifndef DOCTEST_MULTI_LANE_ATOMICS_THREAD_LANES
+#define DOCTEST_MULTI_LANE_ATOMICS_THREAD_LANES 32
+#endif
+
+#ifndef DOCTEST_MULTI_LANE_ATOMICS_CACHE_LINE_SIZE
+#define DOCTEST_MULTI_LANE_ATOMICS_CACHE_LINE_SIZE 64
 #endif
 
 #ifdef DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
@@ -315,17 +320,104 @@ typedef timer_large_integer::type ticks_t;
         ticks_t m_ticks = 0;
     };
 
+#ifdef DOCTEST_CONFIG_NO_MULTI_LANE_ATOMICS
+    template <typename T>
+    using AtomicOrMultiLaneAtomic = std::atomic<T>;
+#else // DOCTEST_CONFIG_NO_MULTI_LANE_ATOMICS
+    // Provides a multilane implementation of an atomic variable that supports add, sub, load,
+    // store. Instead of using a single atomic variable, this splits up into multiple ones,
+    // each sitting on a separate cache line. The goal is to provide a speedup when most
+    // operations are modifying. It achieves this with two properties:
+    //
+    // * Multiple atomics are used, so chance of congestion from the same atomic is reduced.
+    // * Each atomic sits on a separate cache line, so false sharing is reduced.
+    //
+    // The disadvantage is that there is a small overhead due to the use of TLS, and load/store
+    // is slower because all atomics have to be accessed.
+    template <typename T>
+    class MultiLaneAtomic
+    {
+        struct CacheLineAlignedAtomic
+        {
+            std::atomic<T> atomic{};
+            char padding[DOCTEST_MULTI_LANE_ATOMICS_CACHE_LINE_SIZE - sizeof(std::atomic<T>)];
+        };
+        CacheLineAlignedAtomic m_atomics[DOCTEST_MULTI_LANE_ATOMICS_THREAD_LANES];
+
+        static_assert(sizeof(CacheLineAlignedAtomic) == DOCTEST_MULTI_LANE_ATOMICS_CACHE_LINE_SIZE,
+                      "guarantee one atomic takes exactly one cache line");
+
+    public:
+        T operator++() noexcept { return fetch_add(1) + 1; }
+
+        T operator++(int) noexcept { return fetch_add(1); }
+
+        T fetch_add(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+            return myAtomic().fetch_add(arg, order);
+        }
+
+        T fetch_sub(T arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+            return myAtomic().fetch_sub(arg, order);
+        }
+
+        operator T() const noexcept { return load(); }
+
+        T load(std::memory_order order = std::memory_order_seq_cst) const noexcept {
+            auto result = T();
+            for(auto const& c : m_atomics) {
+                result += c.atomic.load(order);
+            }
+            return result;
+        }
+
+        T operator=(T desired) noexcept {
+            store(desired);
+            return desired;
+        }
+
+        void store(T desired, std::memory_order order = std::memory_order_seq_cst) noexcept {
+            // first value becomes desired", all others become 0.
+            for(auto& c : m_atomics) {
+                c.atomic.store(desired, order);
+                desired = {};
+            }
+        }
+
+    private:
+        // Each thread has a different atomic that it operates on. If more than NumLanes threads
+        // use this, some will use the same atomic. So performance will degrate a bit, but still
+        // everything will work.
+        //
+        // The logic here is a bit tricky. The call should be as fast as possible, so that there
+        // is minimal to no overhead in determining the correct atomic for the current thread.
+        //
+        // 1. A global static counter laneCounter counts continuously up.
+        // 2. Each successive thread will use modulo operation of that counter so it gets an atomic
+        //    assigned in a round-robin fashion.
+        // 3. This tlsLaneIdx is stored in the thread local data, so it is directly available with
+        //    little overhead.
+        std::atomic<T>& myAtomic() noexcept {
+            static std::atomic<size_t> laneCounter;
+            DOCTEST_THREAD_LOCAL size_t tlsLaneIdx =
+                    laneCounter++ % DOCTEST_MULTI_LANE_ATOMICS_THREAD_LANES;
+
+            return m_atomics[tlsLaneIdx].atomic;
+        }
+    };
+
+    template <typename T>
+    using AtomicOrMultiLaneAtomic = MultiLaneAtomic<T>;
+#endif // DOCTEST_CONFIG_NO_MULTI_LANE_ATOMICS
+
     // this holds both parameters from the command line and runtime data for tests
     struct ContextState : ContextOptions, TestRunStats, CurrentTestCaseStats
     {
-        std::atomic<int> numAssertsCurrentTest_atomic;
-        std::atomic<int> numAssertsFailedCurrentTest_atomic;
+        AtomicOrMultiLaneAtomic<int> numAssertsCurrentTest_atomic;
+        AtomicOrMultiLaneAtomic<int> numAssertsFailedCurrentTest_atomic;
 
         std::vector<std::vector<String>> filters = decltype(filters)(9); // 9 different filters
 
         std::vector<IReporter*> reporters_currently_used;
-
-        const TestCase* currentTest = nullptr;
 
         assert_handler ah = nullptr;
 
@@ -436,14 +528,16 @@ String::String(const char* in)
 String::String(const char* in, unsigned in_size) {
     using namespace std;
     if(in_size <= last) {
-        memcpy(buf, in, in_size + 1);
+        memcpy(buf, in, in_size);
+        buf[in_size] = '\0';
         setLast(last - in_size);
     } else {
         setOnHeap();
         data.size     = in_size;
         data.capacity = data.size + 1;
         data.ptr      = new char[data.capacity];
-        memcpy(data.ptr, in, in_size + 1);
+        memcpy(data.ptr, in, in_size);
+        data.ptr[in_size] = '\0';
     }
 }
 
@@ -926,7 +1020,7 @@ namespace detail {
 
     Subcase::Subcase(const String& name, const char* file, int line)
             : m_signature({name, file, line}) {
-        ContextState* s = g_cs;
+        auto* s = g_cs;
 
         // check subcase filters
         if(s->subcasesStack.size() < size_t(s->subcase_filter_levels)) {
@@ -1003,6 +1097,8 @@ namespace detail {
         // clear state
         m_description       = nullptr;
         m_skip              = false;
+        m_no_breaks         = false;
+        m_no_output         = false;
         m_may_fail          = false;
         m_should_fail       = false;
         m_expected_failures = 0;
@@ -1018,6 +1114,8 @@ namespace detail {
         m_test_suite        = test_suite.m_test_suite;
         m_description       = test_suite.m_description;
         m_skip              = test_suite.m_skip;
+        m_no_breaks         = test_suite.m_no_breaks;
+        m_no_output         = test_suite.m_no_output;
         m_may_fail          = test_suite.m_may_fail;
         m_should_fail       = test_suite.m_should_fail;
         m_expected_failures = test_suite.m_expected_failures;
@@ -1064,12 +1162,12 @@ namespace detail {
         // this will be used only to differentiate between test cases - not relevant for sorting
         if(m_line != other.m_line)
             return m_line < other.m_line;
-        const int file_cmp = m_file.compare(other.m_file);
-        if(file_cmp != 0)
-            return file_cmp < 0;
         const int name_cmp = strcmp(m_name, other.m_name);
         if(name_cmp != 0)
             return name_cmp < 0;
+        const int file_cmp = m_file.compare(other.m_file);
+        if(file_cmp != 0)
+            return file_cmp < 0;
         return m_template_id < other.m_template_id;
     }
 } // namespace detail
@@ -1478,8 +1576,8 @@ namespace {
                 SetErrorMode(prev_error_mode_1);
                 _set_error_mode(prev_error_mode_2);
                 _set_abort_behavior(prev_abort_behavior, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
-                _CrtSetReportMode(_CRT_ASSERT, prev_report_mode);
-                _CrtSetReportFile(_CRT_ASSERT, prev_report_file);
+                static_cast<void>(_CrtSetReportMode(_CRT_ASSERT, prev_report_mode));
+                static_cast<void>(_CrtSetReportFile(_CRT_ASSERT, prev_report_file));
                 isSet = false;
             }
         }
@@ -1679,8 +1777,8 @@ namespace detail {
             failed_out_of_a_testing_context(*this);
         }
 
-        return m_failed && isDebuggerActive() &&
-               !getContextOptions()->no_breaks; // break into debugger
+        return m_failed && isDebuggerActive() && !getContextOptions()->no_breaks &&
+            (g_cs->currentTest == nullptr || !g_cs->currentTest->m_no_breaks); // break into debugger
     }
 
     void ResultBuilder::react() const {
@@ -1730,7 +1828,8 @@ namespace detail {
             addFailedAssert(m_severity);
         }
 
-        return isDebuggerActive() && !getContextOptions()->no_breaks && !isWarn; // break
+        return isDebuggerActive() && !getContextOptions()->no_breaks && !isWarn &&
+            (g_cs->currentTest == nullptr || !g_cs->currentTest->m_no_breaks); // break into debugger
     }
 
     void MessageBuilder::react() {
@@ -2838,7 +2937,7 @@ namespace {
               << Whitespace(sizePrefixDisplay*1) << "output filename\n";
             s << " -" DOCTEST_OPTIONS_PREFIX_DISPLAY "ob,  --" DOCTEST_OPTIONS_PREFIX_DISPLAY "order-by=<string>             "
               << Whitespace(sizePrefixDisplay*1) << "how the tests should be ordered\n";
-            s << Whitespace(sizePrefixDisplay*3) << "                                       <string> - by [file/suite/name/rand]\n";
+            s << Whitespace(sizePrefixDisplay*3) << "                                       <string> - [file/suite/name/rand/none]\n";
             s << " -" DOCTEST_OPTIONS_PREFIX_DISPLAY "rs,  --" DOCTEST_OPTIONS_PREFIX_DISPLAY "rand-seed=<int>               "
               << Whitespace(sizePrefixDisplay*1) << "seed for random ordering\n";
             s << " -" DOCTEST_OPTIONS_PREFIX_DISPLAY "f,   --" DOCTEST_OPTIONS_PREFIX_DISPLAY "first=<int>                   "
@@ -3011,6 +3110,9 @@ namespace {
         }
 
         void test_case_end(const CurrentTestCaseStats& st) override {
+            if(tc->m_no_output)
+                return;
+
             // log the preamble of the test case only if there is something
             // else to print - something other than that an assert has failed
             if(opt.duration ||
@@ -3045,6 +3147,9 @@ namespace {
         }
 
         void test_case_exception(const TestCaseException& e) override {
+            if(tc->m_no_output)
+                return;
+
             logTestStart();
 
             file_line_to_stream(tc->m_file.c_str(), tc->m_line, " ");
@@ -3079,7 +3184,7 @@ namespace {
         }
 
         void log_assert(const AssertData& rb) override {
-            if(!rb.m_failed && !opt.success)
+            if((!rb.m_failed && !opt.success) || tc->m_no_output)
                 return;
 
             std::lock_guard<std::mutex> lock(mutex);
@@ -3095,6 +3200,9 @@ namespace {
         }
 
         void log_message(const MessageData& mb) override {
+            if(tc->m_no_output)
+                return;
+
             std::lock_guard<std::mutex> lock(mutex);
 
             logTestStart();
@@ -3530,6 +3638,9 @@ int Context::run() {
                 first[i]         = first[idxToSwap];
                 first[idxToSwap] = temp;
             }
+        } else if(p->order_by.compare("none", true) == 0) {
+            // means no sorting - beneficial for death tests which call into the executable
+            // with a specific test case in mind - we don't want to slow down the startup times
         }
     }
 
