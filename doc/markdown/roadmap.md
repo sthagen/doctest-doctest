@@ -14,9 +14,6 @@ Planned features for future releases - order changes constantly... Also look thr
     - ability to redirect the stdout/stderr from test cases and capture it - like Catch does it
     - xUnit/TeamCity reporter
     - compact reporter
-    - options
-        - absolutely no output on success (AKA quiet mode)
-        - summary only (verbosity levels?)
 - matchers - should investigate what they are - look at google test/mock and Catch (also predicates and boost test)
 - header with extensions
     - demangling with the use of the cxxabi header
@@ -95,7 +92,7 @@ Planned features for future releases - order changes constantly... Also look thr
 - support for LibIdentify
 - add CHECKED_IF & friends: https://github.com/catchorg/Catch2/issues/1278
 - support for running tests in parallel in multiple threads
-- death tests - as in [google test](https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#death-tests)
+- death tests - as in [google test](https://github.com/google/googletest/blob/master/docs/advanced.md#death-tests)
 - config options
     - test case name uniqueness - reject the ones with identical names
 - command line options

@@ -23,7 +23,7 @@ See [**the complete test**](../../examples/mpi/mpi.cpp) and [**the configuration
 
 int my_function_to_test(MPI_Comm comm) {
   int rank;
-  MPI_comm_rank(comm,&rank);
+  MPI_Comm_rank(comm,&rank);
   if (rank == 0) {
     return 10;
   }
@@ -41,7 +41,7 @@ MPI_TEST_CASE("test over two processes",2) { // Parallel test on 2 processes
 
 An ```MPI_TEST_CASE``` is like a regular ```TEST_CASE```, except it takes a second argument, which is the number of processes needed to run the test.  If the number of processes is less than 2, the test will fail. If the number of processes is greater than or equal to 2, it will create a sub-communicator over 2 processes, called ```test_comm```, and execute the test over these processes. Three objects are provided by ```MPI_TEST_CASE```: 
  * ```test_comm```, of type ```MPI_Comm```: the mpi communicator on which the test is running,
- * ```test_rank``` and ```test_nb_procs```, two ```int``` giving respectively the rank of the current process and the size of the communicator for ```test_comm```. These last two are just here for convenience and could be retrived from ```test_comm```.
+ * ```test_rank``` and ```test_nb_procs```, two ```int``` giving respectively the rank of the current process and the size of the communicator for ```test_comm```. These last two are just here for convenience and could be retrieved from ```test_comm```.
  
 We always have:
 
@@ -68,7 +68,7 @@ mpirun -np 2 unit_test_executable.exe
 ```c++
 #define DOCTEST_CONFIG_IMPLEMENT
 
-#include "doctest/mpi/doctest.h"
+#include "doctest/extensions/doctest_mpi.h"
 
 int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
@@ -135,7 +135,7 @@ This feature is provided to unit-test mpi-distributed code. It is **not** a way 
 
  * Pass ```s``` member variable of ```ConsoleReporter``` as an argument to member functions so we can use them with another object (would help to factorize ```MPIConsoleReporter```)
  * Only MPI_CHECK tested. MPI_REQUIRE, exception handling: nothing tested
- * If the number of processes is not enought, prints the correct message, but then deadlocks (comes from ```MPI_Probe``` in ```MpiConsoleReporter```)
+ * If the number of processes is not enough, prints the correct message, but then deadlocks (comes from ```MPI_Probe``` in ```MpiConsoleReporter```)
  * [[maybe_unused]] is C++17
  * More testing, automatic testing
  * Packaging: create a new target ```mpi_doctest```? (probably cleaner to depend explicitly on MPI for mpi/doctest.h)
