@@ -113,19 +113,19 @@ TEST_CASE("REQUIRE level of asserts fail and abort the test case - 5") {
     MESSAGE("should not be reached!");
 }
 TEST_CASE("REQUIRE level of asserts fail and abort the test case - 6") {
-	REQUIRE_THROWS_WITH(throw_if(false, ""), "whops!");
+    REQUIRE_THROWS_WITH(throw_if(false, ""), "whops!");
     MESSAGE("should not be reached!");
 }
 TEST_CASE("REQUIRE level of asserts fail and abort the test case - 7") {
-	REQUIRE_THROWS_WITH(throw_if(true, ""), "whops!");
+    REQUIRE_THROWS_WITH(throw_if(true, ""), "whops!");
     MESSAGE("should not be reached!");
 }
 TEST_CASE("REQUIRE level of asserts fail and abort the test case - 8") {
-	REQUIRE_THROWS_WITH_AS(throw_if(false, ""), "whops!", bool);
+    REQUIRE_THROWS_WITH_AS(throw_if(false, ""), "whops!", bool);
     MESSAGE("should not be reached!");
 }
 TEST_CASE("REQUIRE level of asserts fail and abort the test case - 9") {
-	REQUIRE_THROWS_WITH_AS(throw_if(true, ""), "whops!", bool);
+    REQUIRE_THROWS_WITH_AS(throw_if(true, ""), "whops!", bool);
     MESSAGE("should not be reached!");
 }
 TEST_CASE("REQUIRE level of asserts fail and abort the test case - 10") {
@@ -190,4 +190,17 @@ static void someAssertsInFunction() {
 
 TEST_CASE("some asserts used in a function called by a test case") {
     someAssertsInFunction();
+}
+
+TEST_CASE("macro return values") {
+    int a = 4;
+    int b = 2;
+    DOCTEST_MSVC_SUPPRESS_WARNING_WITH_PUSH(4702) // unreachable code
+    if (CHECK(a == b)) { MESSAGE("should not be reached!"); }
+    if (CHECK_FALSE(a != b)) { MESSAGE("should not be reached!"); }
+    if (CHECK_EQ(a, b)) { MESSAGE("should not be reached!"); }
+    if (CHECK_UNARY(a == b)) { MESSAGE("should not be reached!"); }
+    if (CHECK_UNARY_FALSE(a != b)) { MESSAGE("should not be reached!"); }
+    if (CHECK_THROWS([]{}())) { MESSAGE("should not be reached!"); }
+    DOCTEST_MSVC_SUPPRESS_WARNING_POP
 }

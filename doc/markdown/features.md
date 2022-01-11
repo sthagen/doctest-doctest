@@ -12,9 +12,9 @@
 - everything is in the ```doctest``` namespace (and the implementation details are in a nested ```detail``` namespace)
 - all macros have prefixes - some by default have unprefixed versions as well but that is optional - see [**configuration**](configuration.md)
 - 0 warnings even with the most aggressive flags (on all tested compilers!!!)
-	- ```-Weverything -pedantic``` for **clang**
-	- ```-Wall -Wextra -pedantic``` and **>> over 35 <<** other warnings **not** covered by these flags for **GCC**!!! - see [**here**](../../scripts/cmake/common.cmake#L84)
-	- ```/Wall``` for **MSVC** (except for: ```C4514```, ```C4571```, ```C4710```, ```C4711```)
+    - ```-Weverything -pedantic``` for **clang**
+    - ```-Wall -Wextra -pedantic``` and **>> over 35 <<** other warnings **not** covered by these flags for **GCC**!!! - see [**here**](../../scripts/cmake/common.cmake#L84)
+    - ```/Wall``` for **MSVC**
 - doesn't error on unrecognized [**command line**](commandline.md) options and supports prefixes for interop with client command line parsing
 - can set options [**procedurally**](main.md) and not deal with passing ```argc```/```argv``` from the command line
 - doesn't leave warnings disabled after itself
@@ -23,19 +23,18 @@
 
 **SOME OF THIS IS OUTDATED**
 
-- Standards compliant **C++11** code - should work with any **C++11** capable compiler (use tag [**1.2.9**](https://github.com/onqtam/doctest/tree/1.2.9) for C++98 and older compilers)
-- tested with **GCC**: **4.8**, **4.9**, **5**, **6**, **7**, **8**, **9**, **10**
-- tested with **Clang**: **3.5**, **3.6**, **3.7**, **3.8**, **3.9**, **4**, **5**, **6**, **7**, **8**, **9** (XCode 6+)
-- tested with **MSVC**: **2015**, **2017**, **2019** (also in 32 bit mode)
-- per-commit tested on [**travis**](https://travis-ci.org/onqtam/doctest) and [**appveyor**](https://ci.appveyor.com/project/onqtam/doctest) CI services
-	- warnings as errors even on the most aggressive warning levels - see [**here**](../../scripts/cmake/common.cmake#L84)
-	- statically analyzed on the CI - [**Cppcheck**](http://cppcheck.sourceforge.net/) / [**Clang-Tidy**](https://clang.llvm.org/extra/clang-tidy/) / [**Coverity Scan**](https://scan.coverity.com/) / [**OCLint**](http://oclint.org/) / [**Visual Studio Analyzer**](https://docs.microsoft.com/en-us/visualstudio/code-quality/analyzing-c-cpp-code-quality-by-using-code-analysis)
-	- all tests have their output compared to reference output of a previous known good run
-	- all tests built and ran in **Debug**/**Release** modes
-	- all tests ran through **valgrind** under **Linux** (sadly [not under OSX](https://github.com/onqtam/doctest/issues/11))
-	- all tests ran through **address**, **UB** and **thread** sanitizers under **Linux**/**OSX**
-	- tests are ran in more than **150** different configurations on UNIX (Linux + OSX) on **travis** CI
-	- tests are ran in a total of **14** different configurations on Windows on **appveyor** CI
+- Standards compliant **C++11** code - should work with any **C++11** capable compiler (use tag [**1.2.9**](https://github.com/doctest/doctest/tree/1.2.9) for C++98 and older compilers)
+- tested with **GCC**: **4.8**, **4.9**, **5**, **6**, **7**, **8**, **9**, **10**, **11**
+- tested with **Clang**: **3.5**, **3.6**, **3.7**, **3.8**, **3.9**, **4**, **5**, **6**, **7**, **8**, **9**, **10**, **11**, **12**, **13** (XCode 10+)
+- tested with **MSVC**: **2015**, **2017**, **2019**, **2022** (also in 32 bit mode)
+- per-commit tested on [**GitHub Actions**](https://github.com/doctest/doctest/actions)
+    - warnings as errors even on the most aggressive warning levels - see [**here**](../../scripts/cmake/common.cmake#L84)
+    - statically analyzed on the CI - [**Cppcheck**](http://cppcheck.sourceforge.net/) / [**Clang-Tidy**](https://clang.llvm.org/extra/clang-tidy/) / [**Coverity Scan**](https://scan.coverity.com/) / [**OCLint**](http://oclint.org/) / [**Visual Studio Analyzer**](https://docs.microsoft.com/en-us/visualstudio/code-quality/analyzing-c-cpp-code-quality-by-using-code-analysis)
+    - all tests have their output compared to reference output of a previous known good run
+    - all tests built and ran in **Debug**/**Release** modes
+    - all tests ran through **valgrind** under **Linux** (sadly [not under OSX](https://github.com/doctest/doctest/issues/11))
+    - all tests ran through **address**, **UB** and **thread** sanitizers under **Linux**/**OSX**
+    - tests are ran in more than **300** different configurations on UNIX (Linux + OSX) & Windows
 
 ## Other features:
 

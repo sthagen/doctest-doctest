@@ -54,7 +54,7 @@ endforeach()
 
 # add this separately since it shouldn't have output compared to reference output - due to concurrency
 # not adding it for MinGW since it crashes when using mingw-w64-x86_64-8.1.0-release-posix-seh-rt_v6-rev0
-# (also disabled for old XCode builds on travis where there is no thread_local support and this is defined in the build matrix)
+# (also disabled for old XCode builds where there is no thread_local support and this is defined in the build matrix)
 if(NOT MINGW AND NOT DEFINED DOCTEST_THREAD_LOCAL)
     doctest_add_test(NO_OUTPUT NAME concurrency.cpp ${common_args} -sf=*concurrency.cpp -d) # duration: there is no output anyway
 endif()
@@ -86,7 +86,7 @@ doctest_add_test(NAME all_binary  ${common_args} -tc=all?binary* -s) # print all
 doctest_add_test(NAME abort_after ${common_args} -aa=2 -e=off   -sf=*coverage*) # abort after 2 assert fails and parse a negative
 doctest_add_test(NAME first_last  ${common_args} -f=2 -l=4      -sf=*coverage*) # run a range
 doctest_add_test(NAME filter_1    ${common_args} -ts=none) # should filter out all
-# -order-by=name to avoid different output depending on the compiler used. See https://github.com/onqtam/doctest/issues/287
+# -order-by=name to avoid different output depending on the compiler used. See https://github.com/doctest/doctest/issues/287
 doctest_add_test(NAME filter_2        COMMAND $<TARGET_FILE:all_features>   -tse=* -nv -order-by=name) # should filter out all + print skipped
 doctest_add_test(NAME filter_3        ${common_args} -sc=from*,sc* -sce=sc2 -sf=*subcases*) # enter a specific subcase - sc1
 doctest_add_test(NAME order_1         ${common_args} -ob=suite -ns          -sf=*test_cases_and_suites*)

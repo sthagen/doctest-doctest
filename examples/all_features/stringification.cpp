@@ -109,10 +109,10 @@ TEST_CASE("all asserts should fail and show how the objects get stringified") {
     CHECK(f1 == f2);
 
     // std::string already has an operator<< working with std::ostream
-    std::string dummy1 = "omg";
-    std::string dummy2 = "tralala";
+    std::string dummy = "omg";
 
-    CHECK(dummy1 == dummy2);
+    CHECK(dummy == "tralala"); // should fail
+    CHECK("tralala" == dummy); // should fail
 
     std::vector<int> vec1;
     vec1.push_back(1);
