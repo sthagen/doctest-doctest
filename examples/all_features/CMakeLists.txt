@@ -9,6 +9,7 @@ set(files_with_output
     alternative_macros.cpp
     assertion_macros.cpp
     stringification.cpp
+    double_stringification.cpp
     reporters_and_listeners.cpp
     subcases.cpp
     logging.cpp
@@ -16,12 +17,13 @@ set(files_with_output
     test_cases_and_suites.cpp
     asserts_used_outside_of_tests.cpp
     enums.cpp
+    decomposition.cpp
 )
 
 set(files_all
     ${files_with_output}
     concurrency.cpp
-    ../../scripts/coverage_maxout.cpp
+    coverage_maxout.cpp
     namespace1.cpp
     namespace2.cpp
     namespace3.cpp
@@ -89,6 +91,7 @@ doctest_add_test(NAME filter_1    ${common_args} -ts=none) # should filter out a
 # -order-by=name to avoid different output depending on the compiler used. See https://github.com/doctest/doctest/issues/287
 doctest_add_test(NAME filter_2        COMMAND $<TARGET_FILE:all_features>   -tse=* -nv -order-by=name) # should filter out all + print skipped
 doctest_add_test(NAME filter_3        ${common_args} -sc=from*,sc* -sce=sc2 -sf=*subcases*) # enter a specific subcase - sc1
+doctest_add_test(NAME filter_4        ${common_args} -ts=*\\, -tc=*\\: -sc=*\\\\\\,,*:) # escape stuff
 doctest_add_test(NAME order_1         ${common_args} -ob=suite -ns          -sf=*test_cases_and_suites*)
 doctest_add_test(NAME order_2         ${common_args} -ob=name               -sf=*test_cases_and_suites*)
 doctest_add_test(NAME order_3         ${common_args} -ob=rand               -sfe=*) # exclude everything for no output
@@ -96,19 +99,39 @@ doctest_add_test(NO_OUTPUT NAME quiet ${common_args} -q -sf=*test_cases_and_suit
 doctest_add_test(NAME minimal         ${common_args} -m -sf=*test_cases_and_suites*) # minimal with summary
 doctest_add_test(NAME minimal_no_fail ${common_args} -m -sf=*no_failures.cpp) # minimal
 
-################################################################################
-## VARIATION OF THE BUILD WITH DOCTEST DISABLED - SHOULD STILL COMPILE
-################################################################################
+add_executable(disabled_but_evaluated assert_returns_disabled.cpp assert_returns_disabled_evaluate.cpp)
+target_compile_definitions(disabled_but_evaluated PRIVATE DOCTEST_CONFIG_DISABLE)
+target_link_libraries(disabled_but_evaluated doctest ${CMAKE_THREAD_LIBS_INIT})
 
-if(DEFINED ENV{CODE_COVERAGE})
-    return() # do not continue with the disabled example
+doctest_add_test_impl(NO_OUTPUT NAME disabled_but_evaluated COMMAND $<TARGET_FILE:disabled_but_evaluated>)
+
+if(MSVC)
+    target_compile_options(disabled_but_evaluated PRIVATE /wd4702) # unreachable code
 endif()
 
-add_executable(disabled ${files_all})
-target_compile_definitions(disabled PRIVATE DOCTEST_CONFIG_DISABLE)
-target_link_libraries(disabled doctest ${CMAKE_THREAD_LIBS_INIT})
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(disabled_but_evaluated PRIVATE -Wno-global-constructors)
+    target_compile_options(disabled_but_evaluated PRIVATE -Wno-unused-variable)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(disabled_but_evaluated PRIVATE -Wno-unused-variable)
+endif()
 
-doctest_add_test(NAME disabled COMMAND $<TARGET_FILE:disabled>)
+################################################################################
+## CONFIG TESTS - TESTS WITH VARIOUS CONFIGURATION OPTIONS
+################################################################################
+
+function(add_test_all_features test_name flags)
+    add_executable(${test_name} ${files_with_output})
+    target_compile_definitions(${test_name} PRIVATE ${flags})
+    target_link_libraries(${test_name} doctest ${CMAKE_THREAD_LIBS_INIT})
+
+    doctest_add_test_impl(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}> --no-skipped-summary --no-version -ob=name)
+endfunction()
+
+add_test_all_features(no_multithreading DOCTEST_CONFIG_NO_MULTITHREADING)
+add_test_all_features(no_multi_lane_atomics DOCTEST_CONFIG_NO_MULTI_LANE_ATOMICS)
+add_test_all_features(disabled DOCTEST_CONFIG_DISABLE)
+add_test_all_features(std_headers DOCTEST_CONFIG_USE_STD_HEADERS)
 
 # TODO: think about fixing these in a different way! - see issue #61 or commit 6b61e8aa3818c5ea100cedc1bb48a60ea10df6e8
 if(MSVC)

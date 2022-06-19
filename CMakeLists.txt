@@ -69,6 +69,7 @@ endif()
 
 if(${DOCTEST_WITH_MAIN_IN_STATIC_LIB})
     add_library(${PROJECT_NAME}_with_main STATIC EXCLUDE_FROM_ALL ${doctest_parts_folder}/doctest.cpp)
+    add_library(${PROJECT_NAME}::${PROJECT_NAME}_with_main ALIAS ${PROJECT_NAME}_with_main)
     target_compile_definitions(${PROJECT_NAME}_with_main PRIVATE
         DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
     set_target_properties(${PROJECT_NAME}_with_main PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED ON)
@@ -79,15 +80,11 @@ if(MAIN_PROJECT AND DOCTEST_WITH_TESTS)
     include(scripts/cmake/common.cmake)
 
     add_subdirectory(examples/all_features)
-
-    # for code coverage we want exactly one binary to be produced and exercised
-    if(NOT DEFINED ENV{CODE_COVERAGE})
-        add_subdirectory(examples/exe_with_static_libs)
-        add_subdirectory(examples/executable_dll_and_plugin)
-        add_subdirectory(examples/combining_the_same_tests_built_differently_in_multiple_shared_objects)
-        add_subdirectory(scripts/playground)
-        add_subdirectory(examples/mpi)
-    endif()
+    add_subdirectory(examples/exe_with_static_libs)
+    add_subdirectory(examples/executable_dll_and_plugin)
+    add_subdirectory(examples/combining_the_same_tests_built_differently_in_multiple_shared_objects)
+    add_subdirectory(scripts/playground)
+    add_subdirectory(examples/mpi)
 endif()
 
 ################################################################################
