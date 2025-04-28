@@ -40,6 +40,9 @@ function(doctest_add_test_impl)
 
     # append the argument for removing paths from filenames in the output so tests give the same output everywhere
     set(the_command "${the_command} --dt-no-path-filenames=1")
+# see this issue for more details why this currently won't work: https://github.com/doctest/doctest/issues/882#issuecomment-2509620118
+#    # append the argument for stripping prefixes from filenames in the output so tests give the same output everywhere
+#    set(the_command "${the_command} --dt-strip-file-prefixes=${CMAKE_SOURCE_DIR}/:${CMAKE_BINARY_DIR}/")
     # append the argument for substituting source line numbers with 0 in the output so tests give the same output when lines change a bit
     set(the_command "${the_command} --dt-no-line-numbers=1")
     # append the argument for ignoring the exit code of the test programs because some are intended to have failing tests

@@ -9,6 +9,7 @@ set(files_with_output
     alternative_macros.cpp
     assertion_macros.cpp
     stringification.cpp
+    check_doctest_string.cpp
     double_stringification.cpp
     reporters_and_listeners.cpp
     subcases.cpp
@@ -24,6 +25,8 @@ set(files_all
     ${files_with_output}
     concurrency.cpp
     coverage_maxout.cpp
+    bitfields.cpp
+    bitfield_packed_struct.cpp
     namespace1.cpp
     namespace2.cpp
     namespace3.cpp
@@ -61,6 +64,8 @@ if(NOT MINGW AND NOT DEFINED DOCTEST_THREAD_LOCAL)
     doctest_add_test(NO_OUTPUT NAME concurrency.cpp ${common_args} -sf=*concurrency.cpp -d) # duration: there is no output anyway
 endif()
 
+doctest_add_test(NO_OUTPUT NAME bitfield_packed_struct.cpp ${common_args} -sf=*bitfield_packed_struct.cpp )
+doctest_add_test(NO_OUTPUT NAME bitfields.cpp ${common_args} -sf=*bitfields.cpp )
 doctest_add_test(NO_OUTPUT NAME namespace1.cpp ${common_args} -sf=*namespace1.cpp )
 doctest_add_test(NO_OUTPUT NAME namespace2.cpp ${common_args} -sf=*namespace2.cpp )
 doctest_add_test(NO_OUTPUT NAME namespace3.cpp ${common_args} -sf=*namespace3.cpp )
