@@ -1,5 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest.h"
+#include "doctest/doctest.h"
 
 DOCTEST_MAKE_STD_HEADERS_CLEAN_FROM_WARNINGS_ON_WALL_BEGIN
 #include <iostream>
@@ -26,41 +26,41 @@ DOCTEST_MSVC_SUPPRESS_WARNING(4702)
 TEST_CASE("uncomment to test these out") {
     std::function<void(void)> f;
 
-    //for(;;); // infinite loop - to test SIGTERM for CTRL+C ==> doesn't work!
+    // for(;;); // infinite loop - to test SIGTERM for CTRL+C ==> doesn't work!
 
-    //SUBCASE("null pointer access") {
-    //    f = []() { std::cout << *static_cast<int*>(nullptr); };
-    //}
+    // SUBCASE("null pointer access") {
+    //     f = []() { std::cout << *static_cast<int*>(nullptr); };
+    // }
 
-    //SUBCASE("div by zero") {
-    //    f = []() {
-    //        int a = 1;
-    //        --a;
-    //        std::cout << 5 / a;
-    //    };
-    //}
+    // SUBCASE("div by zero") {
+    //     f = []() {
+    //         int a = 1;
+    //         --a;
+    //         std::cout << 5 / a;
+    //     };
+    // }
 
-    //SUBCASE("call terminate") {
-    //    f = []() { std::terminate(); };
-    //}
+    // SUBCASE("call terminate") {
+    //     f = []() { std::terminate(); };
+    // }
 
-    //SUBCASE("throw from destructor`") {
-    //    f = []() {
-    //        struct dtor
-    //        {
-    //            ~dtor() {
-    //                //REQUIRE(1 == 2);
-    //                throw 42;
-    //            }
-    //        };
+    // SUBCASE("throw from destructor`") {
+    //     f = []() {
+    //         struct dtor
+    //         {
+    //             ~dtor() {
+    //                 //REQUIRE(1 == 2);
+    //                 throw 42;
+    //             }
+    //         };
 
     //        dtor();
     //    };
     //}
 
-    //SUBCASE("escaping exception") {
-    //    f = []() { throw 42; };
-    //}
+    // SUBCASE("escaping exception") {
+    //     f = []() { throw 42; };
+    // }
 
 #if FROM_A_SEPARATE_THREAD
     std::thread t(f);

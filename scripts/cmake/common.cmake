@@ -1,4 +1,5 @@
 include(CMakeParseArguments)
+include(CheckCXXCompilerFlag)
 
 # cache this for use inside of the function
 set(CURRENT_LIST_DIR_CACHED ${CMAKE_CURRENT_LIST_DIR})
@@ -82,7 +83,10 @@ macro(add_compiler_flags)
 endmacro()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compiler_flags(-Werror)
+    if(DOCTEST_INTERNAL_WERROR)
+        add_compiler_flags(-Werror)
+    endif()
+
     add_compiler_flags(-fstrict-aliasing)
 
     # The following options are not valid when clang-cl is used.
@@ -154,7 +158,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         add_compiler_flags(-Wdouble-promotion)
         add_compiler_flags(-Wtrampolines)
-        add_compiler_flags(-Wzero-as-null-pointer-constant)
         add_compiler_flags(-Wuseless-cast)
         add_compiler_flags(-Wvector-operation-performance)
     endif()
@@ -189,11 +192,19 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compiler_flags(-Qunused-arguments -fcolor-diagnostics) # needed for ccache integration
 endif()
 
+check_cxx_compiler_flag(-Wunsafe-buffer-usage HAVE_UNSAFE_BUFFER_USAGE)
+if(HAVE_UNSAFE_BUFFER_USAGE)
+    add_compiler_flags(-Wno-unsafe-buffer-usage)
+endif()
+
 if(MSVC)
     add_compiler_flags(/std:c++latest) # for post c++14 updates in MSVC
     add_compiler_flags(/permissive-)   # force standard conformance - this is the better flag than /Za
-    add_compiler_flags(/WX)
     add_compiler_flags(/Wall) # turns on warnings from levels 1 through 4 which are off by default - https://msdn.microsoft.com/en-us/library/23k5d385.aspx
+
+    if(DOCTEST_INTERNAL_WERROR)
+        add_compiler_flags(/WX)
+    endif()
 
     add_compiler_flags(
         /wd4514 # unreferenced inline function has been removed
